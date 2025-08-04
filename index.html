@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Kannada Learning Guide</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Warm Neutrals (Slate, Zinc, Amber) -->
+    <!-- Application Structure Plan: The SPA is designed as an interactive dashboard. A grid of category cards allows users to immediately select a situation (e.g., "In an Autorickshaw"). Clicking a card dynamically generates and displays an interactive "flashcard" list for that category below the grid. This non-linear, task-oriented structure is superior to a long scroll, enabling users to quickly access the specific information they need. The flashcard interaction (revealing translations on click) promotes active learning and memory recall, making it more effective than a static table. -->
+    <!-- Visualization & Content Choices: Report Info -> Learning phrases for a situation. Goal -> Easy navigation and active learning. Viz/Presentation Method -> A responsive grid of category cards and interactive phrase "flashcards". Interaction -> Click a category card to generate and view its phrase list. Click a phrase card to reveal its English and Telugu translations. Justification -> This structure turns passive reading into an active learning experience, which is more effective for language acquisition. Library/Method -> Vanilla JavaScript for DOM manipulation and event handling, Tailwind CSS for styling. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc; /* slate-50 */
+        }
+        .situation-card {
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+        .situation-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+        }
+        .phrase-card .translations {
+            display: none;
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.5s ease-in-out;
+        }
+        .phrase-card.active .translations {
+            display: block;
+            max-height: 200px; /* Adjust as needed */
+        }
+        .smooth-scroll {
+            scroll-behavior: smooth;
+        }
+    </style>
+</head>
+<body class="text-slate-800 smooth-scroll">
+
+    <div class="container mx-auto p-4 md:p-8">
+        <header class="text-center mb-8 md:mb-12">
+            <h1 class="text-3xl md:text-5xl font-bold text-slate-900">Interactive Kannada Learning Guide</h1>
+            <p class="mt-2 text-lg md:text-xl text-slate-600">For Telugu Speakers</p>
+        </header>
+
+        <main>
+            <section id="situations-grid">
+                <div class="text-center mb-8">
+                     <h2 class="text-2xl font-semibold text-slate-800">Choose a Situation</h2>
+                     <p class="text-slate-500 mt-1">Select a category below to view the phrases.</p>
+                </div>
+                <div id="grid-container" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6">
+                    <!-- Category cards will be dynamically inserted here -->
+                </div>
+            </section>
+
+            <section id="phrases-container" class="mt-12 md:mt-16">
+                <!-- Dynamically generated phrase lists will appear here -->
+            </section>
+        </main>
+
+        <footer class="text-center mt-16 text-slate-500 text-sm">
+            <p>Click on a Kannada phrase to reveal its translation. Happy learning!</p>
+        </footer>
+    </div>
+
+    <script>
+        const learningData = [
+            {
+                title: "Basic Greetings",
+                icon: "👋",
+                phrases: [
+                    { kannada: "Namaskara / Namaste", english: "Hello / Greetings", telugu: "Namaskaram" },
+                    { kannada: "Hegiddeera? (formal)", english: "How are you?", telugu: "Ela unnaru?" },
+                    { kannada: "Hegiddiya? (informal)", english: "How are you?", telugu: "Ela unnav?" },
+                    { kannada: "Chennagiddeeni, neevu hegiddeera?", english: "I am fine, how are you?", telugu: "Baagunnanu, meeru ela unnaru?" },
+                    { kannada: "Aaraam? / Aaraamaagiddeera?", english: "Are you well/relaxed?", telugu: "Kshemama? / Baagunnaara?" },
+                    { kannada: "Shubhodaya", english: "Good morning", telugu: "Shubodayam" },
+                    { kannada: "Shubha madhyahna", english: "Good afternoon", telugu: "Shubha madhyahnam" },
+                    { kannada: "Shubha sanje", english: "Good evening", telugu: "Shubha sayantram" },
+                    { kannada: "Shubha raatri", english: "Good night", telugu: "Shubha raatri" },
+                    { kannada: "Dhanyavadagalu", english: "Thank you", telugu: "Dhanyavadalu" },
+                    { kannada: "Welcome / Tumba santosha", english: "You're welcome / Happy to help", telugu: "Welcome / Chaala santhosham" },
+                    { kannada: "Dayavittu", english: "Please", telugu: "Dayachesi" },
+                    { kannada: "Kshamisi", english: "Sorry / Excuse me", telugu: "Kshaminchandi" },
+                    { kannada: "Hogi barthini", english: "(I'll) go and come back (used for goodbye)", telugu: "Velli vastaanu" },
+                    { kannada: "Naale sigona", english: "Let's meet tomorrow", telugu: "Repu kaluddam" }
+                ]
+            },
+            {
+                title: "Introductions",
+                icon: "🤝",
+                phrases: [
+                    { kannada: "Nimma hesaru enu?", english: "What is your name? (formal)", telugu: "Mee peru enti?" },
+                    { kannada: "Nanna hesaru [Name]", english: "My name is [Name]", telugu: "Naa peru [Name]" },
+                    { kannada: "Neevu ellinda bandiddeeri?", english: "Where are you from? (formal)", telugu: "Meeru ekkadi nunchi vacharu?" },
+                    { kannada: "Naanu [Place] inda bandiddeeni", english: "I am from [Place]", telugu: "Nenu [Place] nunchi vachanu" },
+                    { kannada: "Neevu en kelasa maadodu?", english: "What work do you do?", telugu: "Meeru em pani chesthaaru?" },
+                    { kannada: "Naanu software engineer", english: "I am a software engineer", telugu: "Nenu software engineer" },
+                    { kannada: "Nimma parichaya maadikondidakke santosha aaythu", english: "It was a pleasure to meet you", telugu: "Mimmalni parichayam chesukunanduku santhoshamga undi" },
+                    { kannada: "Nange Kannada gothilla", english: "I don't know Kannada", telugu: "Naaku Kannada raadu" },
+                    { kannada: "Nange swalpa swalpa Kannada baruthe", english: "I know a little Kannada", telugu: "Naaku konchem konchem Kannada vastundi" },
+                    { kannada: "Naanu Kannada kalitha iddeeni", english: "I am learning Kannada", telugu: "Nenu Kannada nerchukuntunnanu" },
+                    { kannada: "Neevu Telugu maathadtheera?", english: "Do you speak Telugu?", telugu: "Meeru Telugu maatladathaara?" },
+                    { kannada: "Nimma vayassu eshtu?", english: "What is your age?", telugu: "Mee vayasu entha?" },
+                    { kannada: "Neevu illi hege bandri?", english: "How did you come here?", telugu: "Meeru ikkadiki ela vachaaru?" },
+                    { kannada: "Nimma company hesaru enu?", english: "What is your company's name?", telugu: "Mee company peru enti?" },
+                    { kannada: "Neevu yaava ooru?", english: "Which is your hometown?", telugu: "Meedi ye vooru?" }
+                ]
+            },
+            {
+                title: "In an Autorickshaw",
+                icon: "🛺",
+                phrases: [
+                    { kannada: "Auto, [Place] barthira?", english: "Auto, will you come to [Place]?", telugu: "Auto, [Place] ki vastaara?" },
+                    { kannada: "Eshtu aaguthe?", english: "How much will it be?", telugu: "Entha avuthundi?" },
+                    { kannada: "Meter haaki", english: "Put the meter on", telugu: "Meter veyyi" },
+                    { kannada: "Meter mele 10 rupayi jaasthi", english: "Rs. 10 extra on the meter", telugu: "Meter meeda 10 rupayalu ekkuva" },
+                    { kannada: "Alla, meter prakaara kodi", english: "No, give as per the meter", telugu: "Ledu, meter prakarame ivvandi" },
+                    { kannada: "Sari, banni", english: "Okay, come (let's go)", telugu: "Sare, randi (padandi)" },
+                    { kannada: "Illi nillisi", english: "Stop here", telugu: "Ikkada aapandi" },
+                    { kannada: "Munde nillisi", english: "Stop ahead", telugu: "Mundu aapandi" },
+                    { kannada: "Right-ge thirugi / Balakke thirugi", english: "Turn right", telugu: "Kudi vaipu thippandi" },
+                    { kannada: "Left-ge thirugi / Edakke thirugi", english: "Turn left", telugu: "Edama vaipu thippandi" },
+                    { kannada: "Straight hogi / Nera hogi", english: "Go straight", telugu: "Tinnaga vellandi" },
+                    { kannada: "Change ideya? / Chillar ideya?", english: "Do you have change?", telugu: "Change unda? / Chillara unda?" },
+                    { kannada: "Nanna hathra change illa", english: "I don't have change", telugu: "Naa daggara change ledu" },
+                    { kannada: "Swalpa bega hogi", english: "Go a little faster", telugu: "Konchem twaraga vellandi" },
+                    { kannada: "Swalpa nidhaana maadi", english: "Go a little slower", telugu: "Konchem nemmadiga vellandi" }
+                ]
+            },
+            {
+                title: "In a Public Bus",
+                icon: "🚌",
+                phrases: [
+                    { kannada: "Ee bus Majestic hogutha?", english: "Does this bus go to Majestic?", telugu: "Ee bus Majestic velthunda?" },
+                    { kannada: "Ondu ticket kodi", english: "Give one ticket", telugu: "Okati ticket ivvandi" },
+                    { kannada: "[Place]-ge ondu ticket", english: "One ticket to [Place]", telugu: "[Place] ki okati ticket" },
+                    { kannada: "Eshtu?", english: "How much?", telugu: "Entha?" },
+                    { kannada: "Change kodi", english: "Give change", telugu: "Change ivvandi" },
+                    { kannada: "Next stop yaavudu?", english: "Which is the next stop?", telugu: "Next stop edi?" },
+                    { kannada: "[Stop Name] bandre heli", english: "Please tell me when [Stop Name] comes", telugu: "[Stop Name] vasthe cheppandi" },
+                    { kannada: "Illi ilisthira?", english: "Will you drop me here?", telugu: "Ikkada dimputhaara?" },
+                    { kannada: "Mundina stop-nalli ilithini", english: "I will get down at the next stop", telugu: "Next stop lo diguthaanu" },
+                    { kannada: "Swalpa side kodi / Swalpa jaaga kodi", english: "Please give some side / space", telugu: "Konchem side ivvandi / jaaga ivvandi" },
+                    { kannada: "Haththoke aagutha?", english: "Is it possible to get on?", telugu: "Ekkadaniki avuthunda?" },
+                    { kannada: "Bus full ide", english: "The bus is full", telugu: "Bus nindipoyindi" },
+                    { kannada: "Ladies seat idu", english: "This is a ladies' seat", telugu: "Idi ladies seat" },
+                    { kannada: "Munde hogi", english: "Go forward (inside the bus)", telugu: "Munduki vellandi" },
+                    { kannada: "Hindakke banni", english: "Come backward (inside the bus)", telugu: "Venakki randi" }
+                ]
+            },
+            {
+                title: "At a Store",
+                icon: "🛍️",
+                phrases: [
+                    { kannada: "Anna, ondu haalina packet kodi", english: "Brother, give one milk packet", telugu: "Anna, oka paala packet ivvandi" },
+                    { kannada: "Idhu eshtu?", english: "How much is this?", telugu: "Idi enta?" },
+                    { kannada: "Total eshtu aaythu?", english: "How much is the total?", telugu: "Mottam entha ayyindi?" },
+                    { kannada: "Ondu kg sakkare beku", english: "I need one kg of sugar", telugu: "Oka kg chekkera kaavali" },
+                    { kannada: "Illa, idu beda, bere thorsi", english: "No, I don't want this, show another", telugu: "Ledu, idi vaddu, veredi chupinchandi" },
+                    { kannada: "Online payment ideya? / GPay ideya?", english: "Do you have online payment / GPay?", telugu: "Online payment unda? / GPay unda?" },
+                    { kannada: "QR code kodi", english: "Give the QR code", telugu: "QR code ivvandi" },
+                    { kannada: "Cheela beku", english: "I need a bag", telugu: "Sanchi kaavali" },
+                    { kannada: "Idu fresh ideya?", english: "Is this fresh?", telugu: "Idi fresh ga unda?" },
+                    { kannada: "Mosaru ideya?", english: "Do you have curd?", telugu: "Perugu unda?" },
+                    { kannada: "Bread packet ondu", english: "One packet of bread", telugu: "Okati bread packet" },
+                    { kannada: "Motte eshtu?", english: "How much for eggs?", telugu: "Gudlu enta?" },
+                    { kannada: "Yella sariyagideya?", english: "Is everything correct?", telugu: "Anni sarigga unnaaya?" },
+                    { kannada: "Baaki kodi", english: "Give the remaining balance", telugu: "Migathadi ivvandi" },
+                    { kannada: "Naale kodthini", english: "I'll give it tomorrow", telugu: "Repu istaanu" }
+                ]
+            },
+            {
+                title: "At a Restaurant",
+                icon: "🍽️",
+                phrases: [
+                    { kannada: "Ondu Masala Dosa", english: "One Masala Dosa", telugu: "Okati Masala Dosa" },
+                    { kannada: "Eradu Idli, ondu Vada", english: "Two Idlis, one Vada", telugu: "Rendu Idli, okati Vada" },
+                    { kannada: "Ondu coffee kodi", english: "Give one coffee", telugu: "Oka coffee ivvandi" },
+                    { kannada: "Coffee strong maadi", english: "Make the coffee strong", telugu: "Coffee strong ga cheyyandi" },
+                    { kannada: "Sakkare kammi haaki", english: "Put less sugar", telugu: "Chekkera takkuva veyyandi" },
+                    { kannada: "Parcel maadi", english: "Make it a parcel/takeaway", telugu: "Parcel cheyyandi" },
+                    { kannada: "Illi thinnoke jaaga ideya?", english: "Is there a place to eat here?", telugu: "Ikkada tinadaniki place unda?" },
+                    { kannada: "Token elli thagobeku?", english: "Where to take the token?", telugu: "Token ekkada teesukovali?" },
+                    { kannada: "Swalpa chutney haaki", english: "Put a little chutney", telugu: "Konchem chutney veyyandi" },
+                    { kannada: "Neeru elli ide?", english: "Where is the water?", telugu: "Neellu ekkada unnaayi?" },
+                    { kannada: "Bill kodi", english: "Give the bill", telugu: "Bill ivvandi" },
+                    { kannada: "Tumba chennagide", english: "It's very good/tasty", telugu: "Chaala baagundi" },
+                    { kannada: "Khara jaasthi ide", english: "It is too spicy", telugu: "Kaaram ekkuva undi" },
+                    { kannada: "Uppu illa", english: "There is no salt", telugu: "Uppu ledu" },
+                    { kannada: "Innondu kodi", english: "Give one more", telugu: "Inkoti ivvandi" }
+                ]
+            },
+            {
+                title: "At the Office",
+                icon: "💼",
+                phrases: [
+                    { kannada: "Yen Guru / Yen Macha, yen samachara?", english: "Hey bro/dude, what's up?", telugu: "Enti bro/mama, enti sangathulu?" },
+                    { kannada: "Kelasa hege naditha ide?", english: "How is the work going?", telugu: "Pani ela nadusthondi?" },
+                    { kannada: "Meeting ideya?", english: "Is there a meeting?", telugu: "Meeting unda?" },
+                    { kannada: "Naanu ondu mail kalisiddeeni, check maadi", english: "I have sent a mail, please check", telugu: "Nenu oka mail pampinchanu, check cheyyandi" },
+                    { kannada: "Ee task naanu maadthini", english: "I will do this task", telugu: "Ee task nenu chesthanu" },
+                    { kannada: "Nange swalpa doubt ide, help madthira?", english: "I have a small doubt, can you help?", telugu: "Naaku konchem doubt undi, help chesthara?" },
+                    { kannada: "System hang aagide", english: "The system has hung", telugu: "System hang ayyindi" },
+                    { kannada: "Naanu leave haakbeku", english: "I need to apply for leave", telugu: "Nenu leave pettali" },
+                    { kannada: "Sir, swalpa maathadbeku", english: "Sir, I need to talk for a bit", telugu: "Sir, konchem maatladali" },
+                    { kannada: "Deadline yaavaga?", english: "When is the deadline?", telugu: "Deadline eppudu?" },
+                    { kannada: "Naanu WFH thagotha iddeeni", english: "I am taking Work From Home", telugu: "Nenu WFH teesukuntunnanu" },
+                    { kannada: "Coffee/Tea hogona?", english: "Shall we go for coffee/tea?", telugu: "Coffee/Tea ki veldama?" },
+                    { kannada: "Logout maadthiddeeni", english: "I am logging out", telugu: "Nenu logout chesthunnanu" },
+                    { kannada: "Ninna kelasa aaytha?", english: "Is your work done?", telugu: "Nee pani ayyinda?" },
+                    { kannada: "Bandhe, ondu nimisha", english: "Coming, one minute", telugu: "Vasthunnanu, oka nimisham" }
+                ]
+            },
+            {
+                title: "Food & Lunch Plans",
+                icon: "🍱",
+                phrases: [
+                    { kannada: "Oota aaytha?", english: "Had lunch?", telugu: "Bhojanam ayinda?" },
+                    { kannada: "Innu illa", english: "Not yet", telugu: "Inka ledu" },
+                    { kannada: "Oota maadbeku", english: "I have to eat", telugu: "Bhojanam cheyyali" },
+                    { kannada: "Ootakke enu thandiddeeya?", english: "What did you bring for lunch?", telugu: "Bhojananiki em techavu?" },
+                    { kannada: "Naanu chapati thandiddeeni", english: "I have brought chapati", telugu: "Nenu chapati techhanu" },
+                    { kannada: "Horage hogona?", english: "Shall we go outside?", telugu: "Bayatiki veldama?" },
+                    { kannada: "Yelli hogona?", english: "Where shall we go?", telugu: "Ekkadiki veldam?" },
+                    { kannada: "En thinnona?", english: "What shall we eat?", telugu: "Em tindaam?" },
+                    { kannada: "Nange hasivu aagtha ide", english: "I am feeling hungry", telugu: "Naaku aakali vesthondi" },
+                    { kannada: "Hotte thumbithu", english: "My stomach is full", telugu: "Kadupu nindindi" },
+                    { kannada: "Tiffin aaytha?", english: "Had breakfast?", telugu: "Tiffin ayinda?" },
+                    { kannada: "Raatri oota enu?", english: "What's for dinner?", telugu: "Raatri bhojanam enti?" },
+                    { kannada: "Neevu non-veg thinthira?", english: "Do you eat non-veg?", telugu: "Meeru non-veg tintaara?" },
+                    { kannada: "Naanu pure vegetarian", english: "I am a pure vegetarian", telugu: "Nenu pure vegetarian" },
+                    { kannada: "Swalpa kodi, taste nodthini", english: "Give a little, I'll taste it", telugu: "Konchem ivvandi, taste chusthanu" }
+                ]
+            },
+            {
+                title: "Asking Directions",
+                icon: "🗺️",
+                phrases: [
+                    { kannada: "Kshamisi, [Place] hege hogodu?", english: "Excuse me, how to go to [Place]?", telugu: "Kshaminchandi, [Place] ki ela vellali?" },
+                    { kannada: "Ee address elli baruthe?", english: "Where does this address come?", telugu: "Ee address ekkada vastundi?" },
+                    { kannada: "Idhu doora na? / Tumba doora na?", english: "Is it far? / Is it very far?", telugu: "Idi doorama? / Chaala doorama?" },
+                    { kannada: "Hathra na?", english: "Is it near?", telugu: "Daggaraina?" },
+                    { kannada: "Nadkondu hogabahuda?", english: "Can I go by walking?", telugu: "Naduchukuntu vellavacha?" },
+                    { kannada: "Yaava bus hoguthe?", english: "Which bus goes?", telugu: "Ye bus velthundi?" },
+                    { kannada: "Nera hogi, right thagolli", english: "Go straight, then take a right", telugu: "Tinnaga velli, right teesukondi" },
+                    { kannada: "Landmark enadru ideya?", english: "Is there any landmark?", telugu: "Landmark emaina unda?" },
+                    { kannada: "Naanu daari thappiddeeni", english: "I have lost my way", telugu: "Nenu daari thappipoyanu" },
+                    { kannada: "Google Maps thorsu..", english: "Show me on Google Maps..", telugu: "Google Maps lo chupinchu.." },
+                    { kannada: "Opposite road-nalli", english: "On the opposite road", telugu: "Opposite road lo" },
+                    { kannada: "Adhe building-aa?", english: "Is that the building?", telugu: "Ade building-aa?" },
+                    { kannada: "Yeshtu nimisha beku?", english: "How many minutes does it take?", telugu: "Enni nimishalu paduthundi?" },
+                    { kannada: "Illinda eshtu doora?", english: "How far from here?", telugu: "Ikkadi nunchi entha dooram?" },
+                    { kannada: "Thank you so much", english: "Thank you so much", telugu: "Chaala thanks" }
+                ]
+            },
+            {
+                title: "On a Phone Call",
+                icon: "📞",
+                phrases: [
+                    { kannada: "Hello, [Name] maathadtha irodu?", english: "Hello, is this [Name] speaking?", telugu: "Hello, [Name] maatladuthunnada?" },
+                    { kannada: "Houdu, yaaru maathadtha irodu?", english: "Yes, who is speaking?", telugu: "Avunu, evaru maatladuthunnaru?" },
+                    { kannada: "Naanu [Your Name] maathadtha iddeeni", english: "I am [Your Name] speaking", telugu: "Nenu [Your Name] ni maatladuthunnanu" },
+                    { kannada: "[Person's Name] iddaara?", english: "Is [Person's Name] there?", telugu: "[Person's Name] unnara?" },
+                    { kannada: "Ondu nimisha, line-nalli iri", english: "One minute, please be on the line", telugu: "Oka nimisham, line lo undandi" },
+                    { kannada: "Avaru illa, message enadru idiya?", english: "He/She is not there, any message?", telugu: "Aayana/Aame leru, message emaina unda?" },
+                    { kannada: "Nanna number idu, call madakke heli", english: "This is my number, ask them to call", telugu: "Idi naa number, call cheyyamani cheppandi" },
+                    { kannada: "Swalpa joraagi maathadi, kelistha illa", english: "Speak a little louder, I can't hear", telugu: "Konchem gattiga maatladandi, vinipinchadam ledu" },
+                    { kannada: "Call cut aaythu", english: "The call got disconnected", telugu: "Call cut ayyindi" },
+                    { kannada: "Naanu thirigi call maadthini", english: "I will call back", telugu: "Nenu malli call chesthanu" },
+                    { kannada: "Network sariyagi illa", english: "The network is not proper", telugu: "Network sarigga ledu" },
+                    { kannada: "Phone charge illa", english: "The phone has no charge", telugu: "Phone lo charge ledu" },
+                    { kannada: "Sari, matte maathadthini", english: "Okay, I'll talk later", telugu: "Sare, taruvatha maatladathanu" },
+                    { kannada: "Iga busy iddeeni", english: "I am busy now", telugu: "Ippudu busy ga unnanu" },
+                    { kannada: "Free aadmele call maadi", english: "Call me when you are free", telugu: "Free ayyaka call cheyyandi" }
+                ]
+            },
+            {
+                title: "At the Pharmacy",
+                icon: "💊",
+                phrases: [
+                    { kannada: "Doctor iddaara?", english: "Is the doctor in?", telugu: "Doctor unnara?" },
+                    { kannada: "Appointment thagobeka?", english: "Do I need to take an appointment?", telugu: "Appointment teesukovala?" },
+                    { kannada: "Nange hushaar illa", english: "I am not feeling well", telugu: "Naaku baaledu / aarogyam baaledu" },
+                    { kannada: "Tale novu", english: "Headache", telugu: "Tala noppi" },
+                    { kannada: "Jvara bandide", english: "I have a fever", telugu: "Jvaram vachindi" },
+                    { kannada: "Kempu / Kemmu", english: "Cough", telugu: "Daggu" },
+                    { kannada: "Sheetala / Neeruganti", english: "Cold", telugu: "Jalubu" },
+                    { kannada: "Hotte novu", english: "Stomach ache", telugu: "Kadupu noppi" },
+                    { kannada: "Ee tablet hege thagobeku?", english: "How to take this tablet?", telugu: "Ee tablet ela teesukovali?" },
+                    { kannada: "Ootada munche na? aamele na?", english: "Before food or after food?", telugu: "Bhojananiki mundha? Taruvatha?" },
+                    { kannada: "Prescription kodi", english: "Give the prescription", telugu: "Prescription ivvandi" },
+                    { kannada: "Ee medicine ideya?", english: "Do you have this medicine?", telugu: "Ee medicine unda?" },
+                    { kannada: "Idara bele eshtu?", english: "What is its price?", telugu: "Deeni vela entha?" },
+                    { kannada: "Nange allergy aagide", english: "I have an allergy", telugu: "Naaku allergy ayyindi" },
+                    { kannada: "Swalpa aaraama maadi", english: "Take some rest", telugu: "Konchem rest teesukondi" }
+                ]
+            },
+            {
+                title: "Buying Vegetables",
+                icon: "🥕",
+                phrases: [
+                    { kannada: "Tomato kg eshtu?", english: "How much is a kg of tomatoes?", telugu: "Tomato kg entha?" },
+                    { kannada: "Idella fresh ideya?", english: "Is all this fresh?", telugu: "Ivanni fresh ga unnaaya?" },
+                    { kannada: "Swalpa chennagirodhu haaki", english: "Put the good ones", telugu: "Konchem manchivi veyyandi" },
+                    { kannada: "Arda kg saaku", english: "Half a kg is enough", telugu: "Arda kg chaalu" },
+                    { kannada: "Eerulli ideya?", english: "Do you have onions?", telugu: "Vullipayalu unnaaya?" },
+                    { kannada: "Shunti, bellulli kodi", english: "Give ginger, garlic", telugu: "Allam, vellulli ivvandi" },
+                    { kannada: "Hasi menasinakai khara ideya?", english: "Are the green chillies spicy?", telugu: "Pachi mirapakayalu kaaramga unnaaya?" },
+                    { kannada: "Soppu enen ide?", english: "What all greens do you have?", telugu: "Aaku kooralu emem unnaayi?" },
+                    { kannada: "Idannu thooki", english: "Please weigh this", telugu: "Idi thookam veyyandi" },
+                    { kannada: "Baalehannu hege dozen?", english: "How much for a dozen bananas?", telugu: "Arati pandlu dozen entha?" },
+                    { kannada: "Idu sihi ideya?", english: "Is this sweet?", telugu: "Idi teeyaga unda?" },
+                    { kannada: "Bere enadru beka?", english: "Do you need anything else?", telugu: "Inkemaina kaavala?" },
+                    { kannada: "Ishte saaku", english: "This much is enough", telugu: "Inthe chaalu" },
+                    { kannada: "Yella serisi eshtu aaythu?", english: "How much for everything together?", telugu: "Anni kalipi entha ayyindi?" },
+                    { kannada: "Swalpa discount kodi", english: "Give some discount", telugu: "Konchem discount ivvandi" }
+                ]
+            },
+            {
+                title: "Expressing Emotions",
+                icon: "😊",
+                phrases: [
+                    { kannada: "Tumba khushi aaythu", english: "I felt very happy", telugu: "Chaala happy anipinchindi" },
+                    { kannada: "Manassige tumba nemmadi anistide", english: "My heart feels very peaceful", telugu: "Manasuki chaala prashanthamga undi" },
+                    { kannada: "Naanu ninnannu preethisuthene", english: "I love you", telugu: "Nenu ninnu premisthunnanu" },
+                    { kannada: "Ninna nenapu tumba bartha itthu", english: "I was missing you a lot", telugu: "Nee gnapakam chaala vachindi" },
+                    { kannada: "Neevu tumba olleyavaru", english: "You are a very good person", telugu: "Meeru chaala manchi vaaru" },
+                    { kannada: "Neevu illade nange bejaaru", english: "I feel sad without you", telugu: "Meeru lekunda naaku baadaga undi" },
+                    { kannada: "Ninna jothe idre time hodedhe gothagalla", english: "When I'm with you, I don't even realize time passing", telugu: "Neetho unte time teliyane teliyadu" },
+                    { kannada: "Neevu siggiddu nanna punya", english: "It's my good fortune that I found you", telugu: "Meeru dorakadam naa punyam" },
+                    { kannada: "Khushiyinda nange alu bartha ide", english: "I'm crying with happiness", telugu: "Aanandamtho naaku edupu vasthondi" },
+                    { kannada: "Ninna maathu kelidre saaku, yella novu maaya", english: "Just hearing your voice is enough, all pain vanishes", telugu: "Nee maata vinte chaalu, noppi antha maayam" },
+                    { kannada: "Tumba bejaar aagide", english: "I'm very sad/upset", telugu: "Chaala baadaga undi" },
+                    { kannada: "Tumba kopa bartha ide", english: "I am getting very angry", telugu: "Naaku chaala kopam vasthondi" },
+                    { kannada: "Tumba susthu aagide", english: "I'm very tired", telugu: "Chaala alasataga undi" },
+                    { kannada: "Aascharya aaythu!", english: "I was surprised!", telugu: "Aascharyam vesindi!" }
+                ]
+            },
+            {
+                title: "Asking Questions",
+                icon: "❓",
+                phrases: [
+                    { kannada: "Idara artha enu?", english: "What is the meaning of this?", telugu: "Deeni artham enti?" },
+                    { kannada: "Inomme heli, artha aaglilla", english: "Say it once more, I didn't understand", telugu: "Inko saari cheppandi, artham kaaledu" },
+                    { kannada: "Nange ondu sandeha/doubt ide", english: "I have one doubt", telugu: "Naaku oka sandeham/doubt undi" },
+                    { kannada: "Idannu hege maadodu?", english: "How to do this?", telugu: "Deenini ela cheyyali?" },
+                    { kannada: "Idhu sariya?", english: "Is this correct?", telugu: "Idi correct-ena?" },
+                    { kannada: "Naanu maadiddu sariyaagideya?", english: "Is what I did correct?", telugu: "Nenu chesindi sarigga unda?" },
+                    { kannada: "Neevu en helidri antha?", english: "What was it that you said?", telugu: "Meeru em chepparani?" },
+                    { kannada: "Dayavittu swalpa vivarisi", english: "Please explain a little", telugu: "Dayachesi konchem vivarinchandi" },
+                    { kannada: "Naanu keliddu sariya?", english: "Is what I heard correct?", telugu: "Nenu vinnadi correct-ena?" },
+                    { kannada: "Munde enu?", english: "What next?", telugu: "Taruvatha enti?" }
+                ]
+            },
+            {
+                title: "Seeking Guidance",
+                icon: "🧭",
+                phrases: [
+                    { kannada: "Dayavittu nange daari thorsi", english: "Please show me the way/guide me", telugu: "Dayachesi naaku daari chupinchandi" },
+                    { kannada: "Naanu en maadbeku antha nimma abhipraya?", english: "What is your opinion on what I should do?", telugu: "Nenu em cheyyali anedi mee abhiprayam?" },
+                    { kannada: "Munde en maadodu antha gothilla", english: "I don't know what to do next", telugu: "Mundu em cheyyalo teliyatledu" },
+                    { kannada: "Neevu nanna jaagadalli iddre en maadthidri?", english: "What would you do if you were in my place?", telugu: "Meeru naa place lo unte em chesevaru?" },
+                    { kannada: "Neevu ee reethi maadi, sariyaaguthe", english: "You do it this way, it will be alright", telugu: "Meeru ee vidhamga cheyyandi, saripothundi" },
+                    { kannada: "Heege maadbardu, adu thappu", english: "You shouldn't do this, that is wrong", telugu: "Ila cheyyakudadu, adi thappu" },
+                    { kannada: "Nimma salahege dhanyavadagalu", english: "Thank you for your advice", telugu: "Mee salahaki dhanyavadalu" },
+                    { kannada: "Idhu tumba olle salahe", english: "This is a very good advice", telugu: "Idi chaala manchi salaha" }
+                ]
+            },
+            {
+                title: "Informal Negotiations",
+                icon: "🗣️",
+                phrases: [
+                    { kannada: "Swalpa kammi maadi, sir", english: "Please reduce the price a little, sir", telugu: "Konchem thagginchandi, sir" },
+                    { kannada: "Bere kade ishtakke siguthe", english: "I can get it for this price elsewhere", telugu: "Vere chota intake dorukutundi" },
+                    { kannada: "Nimma final price enu?", english: "What is your final price?", telugu: "Mee final price enti?" },
+                    { kannada: "Ishtu kodakke aagalla", english: "I can't give this much", telugu: "Intha ivvadaniki kaadu" },
+                    { kannada: "Nimmadoo beda, nannadoo beda, madhye fix maadona", english: "Not yours, not mine, let's fix a middle price", telugu: "Meedi vaddu, naadi vaddu, madhyalo fix cheddam" },
+                    { kannada: "Rent tumba jaasthi aaythu", english: "The rent has become too much", telugu: "Rent chaala ekkuva ayyindi" },
+                    { kannada: "Advance swalpa kammi maadikolli", english: "Please reduce the advance amount", telugu: "Advance konchem thagginchukondi" },
+                    { kannada: "Last month idde rate-ge kodi", english: "Give it for the same rate as last month", telugu: "Poinasari unna rate ke ivvandi" }
+                ]
+            },
+            {
+                title: "Professional Negotiations",
+                icon: "📈",
+                phrases: [
+                    { kannada: "Ee kelasa mugisoke innu swalpa time beku", english: "I need some more time to finish this work", telugu: "Ee pani purthi cheyyadaniki inka konchem time kaavali" },
+                    { kannada: "Ee deadline-nalli maadodu kashta aaguthe", english: "It will be difficult to do it by this deadline", telugu: "Ee deadline lo cheyyadam kashtam avuthundi" },
+                    { kannada: "Namage innu swalpa resources bekaguthe", english: "We will need some more resources", telugu: "Manaki inka konchem resources kaavali" },
+                    { kannada: "Nanna salary expectation swalpa jaasthi ide", english: "My salary expectation is a bit higher", telugu: "Naa salary expectation konchem ekkuva undi" },
+                    { kannada: "Industry standard prakaara...", english: "As per the industry standard...", telugu: "Industry standard prakaram..." },
+                    { kannada: "Nanna performance aadhara mele hike kodi", english: "Give me a hike based on my performance", telugu: "Naa performance aadharamga hike ivvandi" },
+                    { kannada: "Can we discuss the compensation package?", english: "Can we discuss the compensation package?", telugu: "Manam compensation package gurinchi discuss cheyyocha?" },
+                    { kannada: "I am expecting a better offer", english: "I am expecting a better offer", telugu: "Nenu better offer expect chesthunnanu" }
+                ]
+            },
+            {
+                title: "General Requests",
+                icon: "🙋",
+                phrases: [
+                    { kannada: "Ninna pen ondu kodiya?", english: "Can you give me your pen?", telugu: "Nee pen okati isthava?" },
+                    { kannada: "Nanna phone-ge charger ideya?", english: "Do you have a charger for my phone?", telugu: "Naa phone ki charger unda?" },
+                    { kannada: "Ondu pusthaka kodthira, odi vaapas kodthini", english: "Can you give a book, I'll read and return it", telugu: "Oka pusthakam isthara, chadivi tirigi isthestanu" },
+                    { kannada: "Idannu naanu vaapas kodthini", english: "I will return this", telugu: "Nenu deenini tirigi isthestanu" },
+                    { kannada: "Ninna bike key swalpa kodiya?", english: "Can you give your bike key for a bit?", telugu: "Nee bike key konchem isthava?" },
+                    { kannada: "Nange ondu chair beku, illi kuthkolloke", english: "I need a chair to sit here", telugu: "Naaku oka chair kaavali, ikkada kurchovadaniki" },
+                    { kannada: "Water bottle ideya? Swalpa neeru beku", english: "Is there a water bottle? I need some water", telugu: "Water bottle unda? Konchem neellu kaavali" },
+                    { kannada: "Idannu swalpa hottu use maadbahuda?", english: "Can I use this for a little while?", telugu: "Deenini konchem sepu use chesukovacha?" }
+                ]
+            },
+            {
+                title: "Friends Conversation",
+                icon: "😎",
+                phrases: [
+                    { kannada: "Yen macha, weekend plans enu?", english: "What's up dude, any weekend plans?", telugu: "Enti macha, weekend plans enti?" },
+                    { kannada: "Movie-ge hogona baa", english: "Let's go for a movie, come", telugu: "Movie ki veldam raa" },
+                    { kannada: "Sikkaapatte traffic itthu guru", english: "There was way too much traffic, man", telugu: "Chaala ekkuva traffic undindi guru" },
+                    { kannada: "Chindi picture guru! Miss maadkobeda", english: "Awesome movie, man! Don't miss it", telugu: "Adiripoye cinema guru! Miss cheyyaku" },
+                    { kannada: "Chill maadu, yella sariyaaguthe", english: "Chill out, everything will be alright", telugu: "Chill avvu, antha set avuthundi" },
+                    { kannada: "En vishya? Tumba serious aagiddeeya?", english: "What's the matter? You seem very serious", telugu: "Enti vishayam? Chaala serious ga unnav?" },
+                    { kannada: "Sumne kutiddeeni, tumba bore aagtha ide", english: "Just sitting idle, feeling very bored", telugu: "Khaali ga kurchunnanu, chaala bore koduthondi" },
+                    { kannada: "Ninna number kalsu, whatsApp maadthini", english: "Send your number, I'll WhatsApp you", telugu: "Nee number pampu, WhatsApp chesthanu" }
+                ]
+            },
+            {
+                title: "Managerial Conversation",
+                icon: "📊",
+                phrases: [
+                    { kannada: "Sir, project status update maadbekittu", english: "Sir, I needed to update the project status", telugu: "Sir, project status update cheyyali" },
+                    { kannada: "Naanu ee task complete maadiddeeni", english: "I have completed this task", telugu: "Nenu ee task complete chesanu" },
+                    { kannada: "Next en maadbeku antha heli", english: "Please tell me what to do next", telugu: "Next em cheyyalo cheppandi" },
+                    { kannada: "Ee module-nalli block aagiddeeni", english: "I am blocked on this module", telugu: "Ee module lo block ayyanu" },
+                    { kannada: "Ee issue resolve maadakke nimma help beku", english: "I need your help to resolve this issue", telugu: "Ee issue resolve cheyyadaniki mee help kaavali" },
+                    { kannada: "Nanna performance mele feedback sigabahuda?", english: "Can I get feedback on my performance?", telugu: "Naa performance meeda feedback dorukutunda?" },
+                    { kannada: "Naanu naale leave-nalli irthini", english: "I will be on leave tomorrow", telugu: "Nenu repu leave lo untanu" },
+                    { kannada: "Dayavittu nanna leave request approve maadi", english: "Please approve my leave request", telugu: "Dayachesi naa leave request approve cheyyandi" },
+                    { kannada: "I need a clarification on this requirement", english: "I need a clarification on this requirement", telugu: "Naaku ee requirement meeda clarification kaavali" },
+                    { kannada: "Team meeting yaavaga fix maadiddeera?", english: "When have you fixed the team meeting?", telugu: "Team meeting eppudu fix chesaru?" }
+                ]
+            }
+        ];
+
+        const gridContainer = document.getElementById('grid-container');
+        const phrasesContainer = document.getElementById('phrases-container');
+
+        function createSituationCard(situation, index) {
+            const card = document.createElement('div');
+            card.className = 'situation-card cursor-pointer bg-white p-4 rounded-lg shadow-md flex flex-col items-center justify-center text-center border border-slate-200 hover:bg-amber-50';
+            card.dataset.index = index;
+            
+            const icon = document.createElement('div');
+            icon.className = 'text-4xl mb-2';
+            icon.textContent = situation.icon;
+            
+            const title = document.createElement('h3');
+            title.className = 'font-semibold text-slate-700';
+            title.textContent = situation.title;
+
+            card.appendChild(icon);
+            card.appendChild(title);
+
+            card.addEventListener('click', () => displayPhrases(index));
+            return card;
+        }
+
+        function displayPhrases(index) {
+            const situation = learningData[index];
+            phrasesContainer.innerHTML = ''; 
+
+            const header = document.createElement('div');
+            header.className = 'text-center mb-8 border-b pb-4';
+            header.innerHTML = `<h2 class="text-3xl font-bold text-amber-600">${situation.icon} ${situation.title}</h2><p class="text-slate-500 mt-2">Click on any Kannada phrase card to reveal the translation.</p>`;
+            phrasesContainer.appendChild(header);
+
+            const phraseList = document.createElement('div');
+            phraseList.className = 'space-y-3';
+
+            situation.phrases.forEach(phrase => {
+                const card = document.createElement('div');
+                card.className = 'phrase-card cursor-pointer bg-white p-4 rounded-lg shadow-sm border border-slate-200';
+                
+                const kannadaText = document.createElement('p');
+                kannadaText.className = 'font-semibold text-lg text-slate-900';
+                kannadaText.textContent = phrase.kannada;
+
+                const translationsDiv = document.createElement('div');
+                translationsDiv.className = 'translations mt-3 pt-3 border-t border-slate-200 text-sm';
+                
+                const englishText = document.createElement('p');
+                englishText.className = 'text-slate-600';
+                englishText.innerHTML = `<strong class="font-medium text-slate-700">English:</strong> ${phrase.english}`;
+
+                const teluguText = document.createElement('p');
+                teluguText.className = 'text-slate-600 mt-1';
+                teluguText.innerHTML = `<strong class="font-medium text-slate-700">Telugu:</strong> ${phrase.telugu}`;
+
+                translationsDiv.appendChild(englishText);
+                translationsDiv.appendChild(teluguText);
+                
+                card.appendChild(kannadaText);
+                card.appendChild(translationsDiv);
+
+                card.addEventListener('click', () => {
+                    card.classList.toggle('active');
+                });
+
+                phraseList.appendChild(card);
+            });
+            
+            phrasesContainer.appendChild(phraseList);
+            phrasesContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        function initializeGrid() {
+            learningData.forEach((situation, index) => {
+                const card = createSituationCard(situation, index);
+                gridContainer.appendChild(card);
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', initializeGrid);
+    </script>
+</body>
+</html>
